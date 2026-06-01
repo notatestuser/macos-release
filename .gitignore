@@ -1,0 +1,7 @@
+.DS_Store
+dist/
+*.p12
+*.p8
+*.cer
+*.csr
+*.key
