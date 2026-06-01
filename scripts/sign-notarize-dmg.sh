@@ -104,7 +104,7 @@ done < <(find "$APP_PATH/Contents" -depth -type d \
 log "Signing main bundle…"
 ENT_ARGS=()
 [ -n "$ENTITLEMENTS" ] && { [ -f "$ENTITLEMENTS" ] || die "entitlements not found: $ENTITLEMENTS"; ENT_ARGS=(--entitlements "$ENTITLEMENTS"); }
-codesign "${CODESIGN_OPTS[@]}" "${ENT_ARGS[@]}" --sign "$IDENTITY" "$APP_PATH"
+codesign "${CODESIGN_OPTS[@]}" ${ENT_ARGS[@]+"${ENT_ARGS[@]}"} --sign "$IDENTITY" "$APP_PATH"
 codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
 # ── 2. Notarize + staple the app ────────────────────────────────────────────
@@ -113,7 +113,7 @@ if [ "$NOTARIZE" = 1 ]; then
   log "Zipping app for notarization…"
   ditto -c -k --keepParent "$APP_PATH" "$WORK/app.zip"
   log "Submitting app to notary service (waits for result)…"
-  xcrun notarytool submit "$WORK/app.zip" "${NOTARY_AUTH[@]}" --wait \
+  xcrun notarytool submit "$WORK/app.zip" ${NOTARY_AUTH[@]+"${NOTARY_AUTH[@]}"} --wait \
     || die "App notarization failed (see log above; 'notarytool log <id>' for detail)."
   log "Stapling app…"
   xcrun stapler staple "$APP_PATH"
@@ -152,7 +152,7 @@ if [ "$IDENTITY" != "-" ]; then
 fi
 if [ "$NOTARIZE" = 1 ]; then
   log "Submitting DMG to notary service…"
-  xcrun notarytool submit "$DMG_PATH" "${NOTARY_AUTH[@]}" --wait \
+  xcrun notarytool submit "$DMG_PATH" ${NOTARY_AUTH[@]+"${NOTARY_AUTH[@]}"} --wait \
     || die "DMG notarization failed."
   log "Stapling DMG…"
   xcrun stapler staple "$DMG_PATH"
