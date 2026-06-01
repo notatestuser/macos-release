@@ -55,13 +55,13 @@ jobs:
       contents: write   # create the GitHub Release + upload the dmg
     steps:
       - name: Checkout app repo (caller)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0          # full history for monotonic CFBundleVersion
           submodules: recursive   # vendored deps (e.g. a ds4 submodule)
 
       - name: Checkout release tooling
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: notatestuser/macos-release
           ref: v1
