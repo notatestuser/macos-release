@@ -58,6 +58,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0          # full history for monotonic CFBundleVersion
+          submodules: recursive   # vendored deps (e.g. a ds4 submodule)
 
       - name: Checkout release tooling
         uses: actions/checkout@v4

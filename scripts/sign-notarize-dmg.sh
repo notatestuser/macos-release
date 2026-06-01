@@ -16,6 +16,8 @@
 #                   (empty = first "Developer ID Application" found in the keychain)
 #   DEVID_IDENTITY  explicit codesign identity string (overrides discovery)
 #   OUT_DIR         where the .dmg is written                                  [cwd]
+#   NOTARY_PROFILE  a stored `notarytool store-credentials` keychain profile name
+#                   (preferred locally; overrides the NOTARY_KEY trio below)
 #   NOTARY_KEY      path to App Store Connect API key .p8
 #   NOTARY_KEY_ID   API key id
 #   NOTARY_ISSUER_ID  API issuer id
@@ -53,7 +55,15 @@ if [ -z "$IDENTITY" ]; then
   IDENTITY="-"
   NOTARIZE=0
 fi
-if [ -z "${NOTARY_KEY:-}" ] || [ -z "${NOTARY_KEY_ID:-}" ] || [ -z "${NOTARY_ISSUER_ID:-}" ]; then
+# Notary auth: a stored keychain profile (NOTARY_PROFILE) OR an App Store Connect
+# API key trio (NOTARY_KEY + NOTARY_KEY_ID + NOTARY_ISSUER_ID).
+NOTARY_AUTH=()
+if [ -n "${NOTARY_PROFILE:-}" ]; then
+  NOTARY_AUTH=(--keychain-profile "$NOTARY_PROFILE")
+elif [ -n "${NOTARY_KEY:-}" ] && [ -n "${NOTARY_KEY_ID:-}" ] && [ -n "${NOTARY_ISSUER_ID:-}" ]; then
+  NOTARY_AUTH=(--key "$NOTARY_KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
+fi
+if [ "${#NOTARY_AUTH[@]}" -eq 0 ]; then
   [ "$NOTARIZE" = 1 ] && log "Notary credentials not set — signing only, skipping notarization."
   NOTARIZE=0
 fi
@@ -103,8 +113,7 @@ if [ "$NOTARIZE" = 1 ]; then
   log "Zipping app for notarization…"
   ditto -c -k --keepParent "$APP_PATH" "$WORK/app.zip"
   log "Submitting app to notary service (waits for result)…"
-  xcrun notarytool submit "$WORK/app.zip" \
-    --key "$NOTARY_KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait \
+  xcrun notarytool submit "$WORK/app.zip" "${NOTARY_AUTH[@]}" --wait \
     || die "App notarization failed (see log above; 'notarytool log <id>' for detail)."
   log "Stapling app…"
   xcrun stapler staple "$APP_PATH"
@@ -143,8 +152,7 @@ if [ "$IDENTITY" != "-" ]; then
 fi
 if [ "$NOTARIZE" = 1 ]; then
   log "Submitting DMG to notary service…"
-  xcrun notarytool submit "$DMG_PATH" \
-    --key "$NOTARY_KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait \
+  xcrun notarytool submit "$DMG_PATH" "${NOTARY_AUTH[@]}" --wait \
     || die "DMG notarization failed."
   log "Stapling DMG…"
   xcrun stapler staple "$DMG_PATH"
