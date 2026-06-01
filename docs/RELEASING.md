@@ -20,14 +20,26 @@ openssl req -new -key DeveloperID.key -out DeveloperID.csr \
 3. Upload `DeveloperID.csr` → Download the issued `.cer`.
 4. Build the importable `.p12` (pairs the cert with the local private key; include
    Apple's *Developer ID — G2* intermediate from https://www.apple.com/certificateauthority/
-   for a complete CI chain):
+   for a complete CI chain).
+
+   > **Use `-legacy`.** OpenSSL 3 defaults to a SHA-256 PKCS#12 MAC that macOS
+   > `security import` (used by CI) cannot read — it fails with the misleading
+   > `MAC verification failed during PKCS12 import (wrong password?)`. `-legacy`
+   > writes the SHA-1-MAC format `security` accepts.
 
    ```bash
    cd <signing-dir>
    openssl x509 -inform DER -in developerID_application.cer -out leaf.pem
    openssl x509 -inform DER -in DeveloperIDG2CA.cer -out interm.pem
-   openssl pkcs12 -export -inkey DeveloperID.key -in leaf.pem -certfile interm.pem \
+   openssl pkcs12 -export -legacy -inkey DeveloperID.key -in leaf.pem -certfile interm.pem \
      -out DeveloperID.p12 -name "Developer ID Application" -passout pass:CHOOSE_A_PASSWORD
+   ```
+
+   Verify `security import` accepts it before pushing secrets:
+   ```bash
+   KC=/tmp/v.keychain-db; security create-keychain -p t "$KC"; security unlock-keychain -p t "$KC"
+   security import DeveloperID.p12 -k "$KC" -P CHOOSE_A_PASSWORD -T /usr/bin/codesign && echo OK
+   security delete-keychain "$KC"
    ```
 
    Keep `DeveloperID.p12` + its password safe. This is the CI signing secret.
